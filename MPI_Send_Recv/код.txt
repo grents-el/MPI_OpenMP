@@ -1,0 +1,48 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <mpi.h>
+#include <time.h>
+
+int main(int argc, char **argv) {
+    int rank, size;
+    MPI_Status status;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    srand(time(0) + rank);
+    int m = 5;
+    double R_local;
+    double rec = -INFINITY;
+    int n = 4;
+    double x = ((rank + 1) * rand()) / (double)RAND_MAX;
+        double y[m + 1];
+        double R_element = 1;
+        for (int k = 1; k < m + 1; k++) {
+            y[k] = pow(cos(x), k);
+            printf("Process: %d  y[%d]= %f\n",rank,k, y[k]);
+            R_element *= y[k];
+        }
+        printf("Process: %d R = %f\n",rank,R_element);
+        if (R_element > rec) {
+            rec = R_element;
+        }
+
+    if (rank != 0) {
+        MPI_Send(&rec, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD); 
+        printf("\n");
+    } else {
+	printf("\n");
+        for (int i = 1; i < size; i++) {
+            double local_max;
+            MPI_Recv(&local_max, 1, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, &status);
+            if (local_max > rec) {
+                rec = local_max; 
+            }
+        }
+        printf("Global maximum: %lf\n", rec);
+    }
+
+    MPI_Finalize();
+    return 0;
+}

@@ -1,0 +1,49 @@
+#include <stdio.h>
+#include <math.h>
+#include <omp.h>
+
+double f(double x, double y) {
+    return (x * x - y * y) * sin(M_PI * (x - y) * (x - y));
+}
+
+int main(int argc, char** argv) {
+    double x_lower = 0.0, x_upper = 1.0,x;
+    double y_lower = -0.5, y_upper = 0.5,y;
+    int n = 10000,size;
+    double integral, st, fin;
+    double hx = (x_upper - x_lower) / n;
+    double hy = (y_upper - y_lower) / n;
+    double sum = 0.0;
+
+
+
+#pragma omp parallel default(shared) private(x, y) shared(n, x_lower, x_upper, y_lower, y_upper, hx, hy) reduction(+:sum) 
+{
+    #pragma omp single
+	{
+	    st = omp_get_wtime();
+	    size = omp_get_num_threads();
+	}
+
+#pragma omp for schedule(static,2)
+   for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+             x = x_lower + (i + 0.5) * hx;
+             y = y_lower + (j + 0.5) * hy;
+            if (fabs(y) < x && x < 1 - fabs(y)) {
+                sum += f(x, y);
+            }
+        }
+	
+
+    }
+}
+    integral=hx * hy * sum;
+    fin = omp_get_wtime();
+
+    printf("Integral: %.10f\n", integral);
+    printf("Time: %f\n", fin - st);
+    printf("on %d threads",  size);
+
+    return 0;
+}
